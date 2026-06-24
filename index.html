@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<title>Doodh Hisaab — Milk Tracker</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg">
+<style>
+  :root{
+    --bg:#f3f4f6; --card:#ffffff; --ink:#111827; --muted:#6b7280;
+    --line:#e5e7eb; --teal:#0f766e; --teal-d:#0b5c55;
+    --cow:#16a34a; --cow-bg:#dcfce7; --buf:#7c3aed; --buf-bg:#ede9fe;
+    --danger:#dc2626; --amber:#d97706;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg);color:var(--ink);padding-bottom:40px}
+  header{background:var(--teal);color:#fff;padding:16px 16px calc(12px + env(safe-area-inset-top));
+    position:sticky;top:0;z-index:5}
+  header h1{margin:0;font-size:1.2rem;letter-spacing:.2px;display:flex;align-items:center;gap:8px}
+  header .sub{opacity:.85;font-size:.78rem;margin-top:2px}
+  nav.tabs{display:flex;background:var(--teal);position:sticky;top:64px;z-index:4;padding:0 8px 8px}
+  nav.tabs button{flex:1;background:rgba(255,255,255,.12);color:#fff;border:none;padding:9px;
+    margin:0 4px;border-radius:10px;font-size:.85rem;font-weight:600;cursor:pointer}
+  nav.tabs button.active{background:#fff;color:var(--teal)}
+  main{max-width:560px;margin:0 auto;padding:14px}
+  section.tab{display:none} section.tab.active{display:block}
+  .monthbar{display:flex;align-items:center;justify-content:space-between;margin:4px 0 12px}
+  .monthbar button{background:var(--card);border:1px solid var(--line);width:38px;height:38px;
+    border-radius:10px;font-size:1.1rem;color:var(--ink);cursor:pointer}
+  .monthbar .label{font-weight:600;font-size:1.05rem}
+  .cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px}
+  .cards.four{grid-template-columns:1fr 1fr 1fr 1fr}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 8px;text-align:center}
+  .card .k{font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+  .card .v{font-size:1.2rem;font-weight:700;margin-top:4px}
+  .card.cow .v{color:var(--cow)} .card.buf .v{color:var(--buf)} .card.cost .v{color:var(--teal)} .card.cnt .v{color:var(--amber)}
+  .card .u{font-size:.62rem;color:var(--muted)}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:16px}
+  .panel h2{margin:0 0 12px;font-size:.9rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;
+    display:flex;justify-content:space-between;align-items:center}
+  .seg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+  .seg button{padding:12px;border-radius:12px;border:2px solid var(--line);background:#fff;
+    font-size:1rem;font-weight:600;cursor:pointer;color:var(--ink);display:flex;align-items:center;justify-content:center;gap:6px}
+  .seg button.active[data-type="cow"]{border-color:var(--cow);background:var(--cow-bg);color:#14532d}
+  .seg button.active[data-type="buffalo"]{border-color:var(--buf);background:var(--buf-bg);color:#4c1d95}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  label{display:block;font-size:.74rem;color:var(--muted);margin-bottom:5px;font-weight:500}
+  input{width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;font-size:1rem;background:#fff;color:var(--ink)}
+  input:focus{outline:none;border-color:var(--teal)}
+  .hint{font-size:.68rem;color:var(--muted);margin:-6px 0 10px}
+  .quick{display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 12px}
+  .quick button{flex:1;min-width:54px;padding:8px;border:1px solid var(--line);border-radius:10px;background:#f9fafb;font-size:.85rem;cursor:pointer;color:var(--ink)}
+  .btn{width:100%;padding:14px;background:var(--teal);color:#fff;border:none;border-radius:12px;font-size:1.05rem;font-weight:700;cursor:pointer}
+  .btn:active{background:var(--teal-d)}
+  .btn.sm{padding:11px;font-size:.95rem}
+  .btn.ghost{background:#f9fafb;color:var(--teal);border:1px solid var(--line)}
+  .daygroup{margin-bottom:14px}
+  .monthhdr{font-size:.8rem;font-weight:700;color:var(--teal);margin:8px 0 4px;padding-top:8px;border-top:2px solid var(--line)}
+  .daygroup .date{font-size:.76rem;color:var(--muted);font-weight:600;margin:0 0 6px}
+  .entry{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+  .pill{font-size:1.2rem;width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .pill.cow{background:var(--cow-bg)} .pill.buffalo{background:var(--buf-bg)}
+  .entry .meta{flex:1;min-width:0}
+  .entry .meta .t{font-weight:600;font-size:.94rem}
+  .entry .meta .s{font-size:.74rem;color:var(--muted)}
+  .entry .amt{font-weight:700;font-size:.94rem}
+  .entry .del{background:none;border:none;color:var(--danger);font-size:1.05rem;cursor:pointer;padding:6px;opacity:.7}
+  .empty{text-align:center;color:var(--muted);padding:24px 0;font-size:.9rem}
+  .ratecard{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .ratecard .em{font-size:1.4rem;width:40px;text-align:center}
+  .ratecard input{flex:1}
+  .ratecard .now{font-size:.72rem;color:var(--muted);min-width:74px}
+  .histline{display:flex;justify-content:space-between;font-size:.85rem;padding:8px 0;border-top:1px solid var(--line)}
+  .histline .d{color:var(--muted)}
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+</style>
+</head>
+<body>
+<header>
+  <h1>🥛 Doodh Hisaab</h1>
+  <div class="sub">Track your daily milk — cow &amp; buffalo</div>
+</header>
+<nav class="tabs">
+  <button data-tab="track" class="active">Track</button>
+  <button data-tab="ledger">Ledger</button>
+  <button data-tab="prices">Prices</button>
+</nav>
+
+<main>
+  <!-- ============ TRACK ============ -->
+  <section class="tab active" id="tab-track">
+    <div class="monthbar">
+      <button id="prev-month" aria-label="Previous month">‹</button>
+      <div class="label" id="month-label">—</div>
+      <button id="next-month" aria-label="Next month">›</button>
+    </div>
+    <div class="cards">
+      <div class="card cow"><div class="k">🐄 Cow</div><div class="v" id="sum-cow">0</div><div class="u">litres</div></div>
+      <div class="card buf"><div class="k">🐃 Buffalo</div><div class="v" id="sum-buffalo">0</div><div class="u">litres</div></div>
+      <div class="card cost"><div class="k">Cost</div><div class="v" id="sum-cost">₹0</div><div class="u">this month</div></div>
+    </div>
+    <div class="panel">
+      <h2>Add delivery</h2>
+      <div class="seg">
+        <button id="btn-cow" data-type="cow" class="active">🐄 Cow</button>
+        <button id="btn-buffalo" data-type="buffalo">🐃 Buffalo</button>
+      </div>
+      <div class="row">
+        <div>
+          <label for="qty">Quantity (L)</label>
+          <input id="qty" type="number" inputmode="decimal" step="0.25" min="0" placeholder="e.g. 1.5">
+        </div>
+        <div>
+          <label for="rate">Rate (₹/L)</label>
+          <input id="rate" type="number" inputmode="decimal" step="1" min="0" placeholder="auto">
+        </div>
+      </div>
+      <div class="hint">Rate auto-fills from the current price (Prices tab). Edit here only for a one-off.</div>
+      <div class="quick">
+        <button data-q="0.5">+0.5L</button><button data-q="1">+1L</button>
+        <button data-q="1.5">+1.5L</button><button data-q="2">+2L</button>
+      </div>
+      <div class="row"><div style="grid-column:1 / -1">
+        <label for="date">Date</label><input id="date" type="date">
+      </div></div>
+      <button class="btn" id="add-btn">Add delivery</button>
+    </div>
+    <div class="panel">
+      <h2>This month <span id="hist-count" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)"></span></h2>
+      <div id="history"></div>
+    </div>
+  </section>
+
+  <!-- ============ LEDGER ============ -->
+  <section class="tab" id="tab-ledger">
+    <div class="cards four">
+      <div class="card cow"><div class="k">🐄 Cow</div><div class="v" id="all-cow">0</div><div class="u">L total</div></div>
+      <div class="card buf"><div class="k">🐃 Buff</div><div class="v" id="all-buffalo">0</div><div class="u">L total</div></div>
+      <div class="card cost"><div class="k">Spent</div><div class="v" id="all-cost">₹0</div><div class="u">all time</div></div>
+      <div class="card cnt"><div class="k">Txns</div><div class="v" id="all-count">0</div><div class="u">entries</div></div>
+    </div>
+    <div class="panel">
+      <h2>Backup &amp; sync</h2>
+      <div class="twocol">
+        <button class="btn ghost sm" id="exp-csv">⬇ Export CSV</button>
+        <button class="btn ghost sm" id="exp-json">⬇ Backup (JSON)</button>
+      </div>
+      <button class="btn ghost sm" id="imp-btn" style="width:100%">⬆ Import / Restore (JSON)</button>
+      <input type="file" id="imp-file" accept="application/json,.json" hidden>
+      <div class="hint" style="margin-top:8px">CSV = your full record for accounts. JSON = a backup you can restore, or import on the other phone to merge.</div>
+    </div>
+    <div class="panel">
+      <h2>All transactions <span id="all-hist-count" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)"></span></h2>
+      <div id="ledger"></div>
+    </div>
+  </section>
+
+  <!-- ============ PRICES ============ -->
+  <section class="tab" id="tab-prices">
+    <div class="panel">
+      <h2>Current price (₹/L)</h2>
+      <div class="ratecard">
+        <div class="em">🐄</div>
+        <input id="rate-cow" type="number" inputmode="decimal" step="1" min="0" placeholder="cow ₹/L">
+        <div class="now" id="now-cow">—</div>
+      </div>
+      <div class="ratecard">
+        <div class="em">🐃</div>
+        <input id="rate-buffalo" type="number" inputmode="decimal" step="1" min="0" placeholder="buffalo ₹/L">
+        <div class="now" id="now-buffalo">—</div>
+      </div>
+      <div class="row"><div style="grid-column:1 / -1">
+        <label for="rate-date">Effective from</label><input id="rate-date" type="date">
+      </div></div>
+      <button class="btn" id="save-rate">Save price change</button>
+      <div class="hint" style="margin-top:8px">Saving logs the new price with its date. Old deliveries keep the price they were billed at.</div>
+    </div>
+    <div class="panel">
+      <h2>Price history</h2>
+      <div id="ratehist"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+(function(){
+  "use strict";
+  var KEY="milk_entries_v1", RATEKEY="milk_rates_v1", RHKEY="milk_rate_history_v1";
+  var selectedType="cow", tab="track";
+  var view = thisMonth();
+  var MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+  function thisMonth(){ var d=new Date(); return {y:d.getFullYear(), m:d.getMonth()}; }
+  function pad(n){ return (n<10?"0":"")+n; }
+  function todayISO(){ var d=new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+  function round(n){ return Math.round(n*100)/100; }
+  function uid(){ return String(Date.now())+Math.floor(Math.random()*100000); }
+
+  function load(){ try{ return JSON.parse(localStorage.getItem(KEY))||[]; }catch(e){ return []; } }
+  function save(v){ localStorage.setItem(KEY, JSON.stringify(v)); }
+  function loadRates(){ try{ return JSON.parse(localStorage.getItem(RATEKEY))||{cow:"",buffalo:""}; }catch(e){ return {cow:"",buffalo:""}; } }
+  function saveRates(v){ localStorage.setItem(RATEKEY, JSON.stringify(v)); }
+  function loadRH(){ try{ return JSON.parse(localStorage.getItem(RHKEY))||[]; }catch(e){ return []; } }
+  function saveRH(v){ localStorage.setItem(RHKEY, JSON.stringify(v)); }
+
+  function currentRate(type){ var r=loadRates(); return (r[type]!=null && r[type]!=="")? r[type] : ""; }
+  function inView(ds){ var p=ds.split("-"); return (+p[0])===view.y && (+p[1]-1)===view.m; }
+  function fmtDate(ds){ var p=ds.split("-"); var d=new Date(+p[0],+p[1]-1,+p[2]);
+    var dow=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getDay()];
+    return dow+", "+(+p[2])+" "+MONTHS[+p[1]-1].slice(0,3); }
+  function fmtFull(ds){ var p=ds.split("-"); return (+p[2])+" "+MONTHS[+p[1]-1].slice(0,3)+" "+p[0]; }
+  function monthKey(ds){ var p=ds.split("-"); return p[0]+"-"+p[1]; }
+  function monthName(mk){ var p=mk.split("-"); return MONTHS[+p[1]-1]+" "+p[0]; }
+
+  function entryRow(e){
+    var amt=Math.round((e.qty||0)*(e.rate||0));
+    return '<div class="entry">'+
+      '<div class="pill '+e.type+'">'+(e.type==="cow"?"🐄":"🐃")+'</div>'+
+      '<div class="meta"><div class="t">'+e.qty+' L '+(e.type==="cow"?"Cow":"Buffalo")+'</div>'+
+      '<div class="s">@ ₹'+(e.rate||0)+'/L</div></div>'+
+      '<div class="amt">₹'+amt+'</div>'+
+      '<button class="del" data-id="'+e.id+'" aria-label="Delete">✕</button></div>';
+  }
+  function groupByDate(list, host, emptyMsg){
+    host.innerHTML="";
+    if(!list.length){ host.innerHTML='<div class="empty">'+emptyMsg+'</div>'; return; }
+    var byDate={}; list.forEach(function(e){ (byDate[e.date]=byDate[e.date]||[]).push(e); });
+    Object.keys(byDate).sort().reverse().forEach(function(date){
+      var g=document.createElement("div"); g.className="daygroup";
+      g.innerHTML='<div class="date">'+fmtDate(date)+'</div>'+byDate[date].map(entryRow).join("");
+      host.appendChild(g);
+    });
+  }
+
+  function renderTrack(){
+    var list=load();
+    document.getElementById("month-label").textContent=MONTHS[view.m]+" "+view.y;
+    var me=list.filter(function(e){ return inView(e.date); });
+    var cow=0,buf=0,cost=0;
+    me.forEach(function(e){ if(e.type==="cow")cow+=e.qty; else buf+=e.qty; cost+=(e.qty||0)*(e.rate||0); });
+    document.getElementById("sum-cow").textContent=round(cow);
+    document.getElementById("sum-buffalo").textContent=round(buf);
+    document.getElementById("sum-cost").textContent="₹"+Math.round(cost);
+    document.getElementById("hist-count").textContent=me.length?"("+me.length+")":"";
+    groupByDate(me, document.getElementById("history"), "No deliveries this month yet.<br>Add your first one above. 🥛");
+  }
+
+  function renderLedger(){
+    var list=load().slice().sort(function(a,b){ return a.date<b.date?1:(a.date>b.date?-1:0); });
+    var cow=0,buf=0,cost=0;
+    list.forEach(function(e){ if(e.type==="cow")cow+=e.qty; else buf+=e.qty; cost+=(e.qty||0)*(e.rate||0); });
+    document.getElementById("all-cow").textContent=round(cow);
+    document.getElementById("all-buffalo").textContent=round(buf);
+    document.getElementById("all-cost").textContent="₹"+Math.round(cost);
+    document.getElementById("all-count").textContent=list.length;
+    document.getElementById("all-hist-count").textContent=list.length?"("+list.length+")":"";
+    var host=document.getElementById("ledger"); host.innerHTML="";
+    if(!list.length){ host.innerHTML='<div class="empty">No transactions yet.</div>'; return; }
+    var byMonth={}; list.forEach(function(e){ (byMonth[monthKey(e.date)]=byMonth[monthKey(e.date)]||[]).push(e); });
+    Object.keys(byMonth).sort().reverse().forEach(function(mk){
+      var ms=byMonth[mk], mc=0; ms.forEach(function(e){ mc+=(e.qty||0)*(e.rate||0); });
+      var wrap=document.createElement("div");
+      wrap.innerHTML='<div class="monthhdr">'+monthName(mk)+' — ₹'+Math.round(mc)+'</div>';
+      groupByDate(ms, (function(){ var d=document.createElement("div"); wrap.appendChild(d); return d; })(), "");
+      host.appendChild(wrap);
+    });
+  }
+
+  function renderPrices(){
+    var r=loadRates();
+    if(document.activeElement.id!=="rate-cow") document.getElementById("rate-cow").value=(r.cow!=null?r.cow:"");
+    if(document.activeElement.id!=="rate-buffalo") document.getElementById("rate-buffalo").value=(r.buffalo!=null?r.buffalo:"");
+    document.getElementById("now-cow").textContent=(r.cow!==""&&r.cow!=null)?("now ₹"+r.cow):"not set";
+    document.getElementById("now-buffalo").textContent=(r.buffalo!==""&&r.buffalo!=null)?("now ₹"+r.buffalo):"not set";
+    var rh=loadRH().slice().sort(function(a,b){ return a.date<b.date?1:(a.date>b.date?-1:0); });
+    var host=document.getElementById("ratehist"); host.innerHTML="";
+    if(!rh.length){ host.innerHTML='<div class="empty">No price changes logged yet.</div>'; return; }
+    rh.forEach(function(h){
+      var div=document.createElement("div"); div.className="histline";
+      div.innerHTML='<span>'+(h.type==="cow"?"🐄 Cow":"🐃 Buffalo")+' → <b>₹'+h.rate+'/L</b></span><span class="d">'+fmtFull(h.date)+'</span>';
+      host.appendChild(div);
+    });
+  }
+
+  function renderAll(){ renderTrack(); renderLedger(); renderPrices(); }
+
+  function addEntry(){
+    var qtyEl=document.getElementById("qty"), rateEl=document.getElementById("rate"), dateEl=document.getElementById("date");
+    var qty=parseFloat(qtyEl.value);
+    var rate=parseFloat(rateEl.value);
+    if(isNaN(rate)) rate=parseFloat(currentRate(selectedType));
+    var date=dateEl.value||todayISO();
+    if(!(qty>0)){ qtyEl.focus(); qtyEl.style.borderColor="#dc2626"; return; }
+    qtyEl.style.borderColor="";
+    if(!(rate>=0)||isNaN(rate)) rate=0;
+    var list=load();
+    list.push({id:uid(), date:date, type:selectedType, qty:round(qty), rate:round(rate)});
+    save(list);
+    qtyEl.value=""; renderAll(); setRateField();
+  }
+
+  function setType(t){
+    selectedType=t;
+    document.getElementById("btn-cow").classList.toggle("active", t==="cow");
+    document.getElementById("btn-buffalo").classList.toggle("active", t==="buffalo");
+    setRateField();
+  }
+  function setRateField(){ var c=currentRate(selectedType); document.getElementById("rate").value=(c!==""?c:""); }
+
+  function saveRateChange(){
+    var rc=document.getElementById("rate-cow").value, rb=document.getElementById("rate-buffalo").value;
+    var date=document.getElementById("rate-date").value||todayISO();
+    var rates=loadRates(), rh=loadRH(), changed=false;
+    if(rc!==""){ var nc=round(parseFloat(rc)); if(!isNaN(nc) && nc!==rates.cow){ rates.cow=nc; rh.push({id:uid(),date:date,type:"cow",rate:nc}); changed=true; } }
+    if(rb!==""){ var nb=round(parseFloat(rb)); if(!isNaN(nb) && nb!==rates.buffalo){ rates.buffalo=nb; rh.push({id:uid(),date:date,type:"buffalo",rate:nb}); changed=true; } }
+    saveRates(rates); if(changed) saveRH(rh);
+    var btn=document.getElementById("save-rate"); var old=btn.textContent;
+    btn.textContent=changed?"✓ Saved":"No change"; setTimeout(function(){ btn.textContent=old; },1200);
+    renderAll(); setRateField();
+  }
+
+  function toCSV(){
+    var list=load().slice().sort(function(a,b){ return a.date<b.date?-1:1; });
+    var rows=[["date","type","quantity_l","rate_per_l","amount_inr"]];
+    list.forEach(function(e){ rows.push([e.date,e.type,e.qty,e.rate,Math.round((e.qty||0)*(e.rate||0))]); });
+    return rows.map(function(r){ return r.join(","); }).join("\n");
+  }
+  function toJSON(){ return JSON.stringify({entries:load(),rates:loadRates(),rateHistory:loadRH(),exportedAt:todayISO()},null,2); }
+  function download(name, text, type){
+    var blob=new Blob([text],{type:type}), url=URL.createObjectURL(blob);
+    var a=document.createElement("a"); a.href=url; a.download=name; document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); },100);
+  }
+  function importJSON(text){
+    var data=JSON.parse(text);
+    if(!data || !Array.isArray(data.entries)) throw new Error("bad file");
+    var cur=load(), seen={}; cur.forEach(function(e){ seen[e.id]=true; });
+    data.entries.forEach(function(e){ if(e && e.id && !seen[e.id]){ cur.push(e); seen[e.id]=true; } });
+    save(cur);
+    if(data.rateHistory && Array.isArray(data.rateHistory)){
+      var rh=loadRH(), rseen={}; rh.forEach(function(h){ rseen[h.id]=true; });
+      data.rateHistory.forEach(function(h){ if(h && h.id && !rseen[h.id]){ rh.push(h); rseen[h.id]=true; } });
+      saveRH(rh);
+    }
+    if(data.rates) saveRates(data.rates);
+    renderAll();
+    return cur.length;
+  }
+
+  function setTab(t){
+    tab=t;
+    ["track","ledger","prices"].forEach(function(x){
+      document.getElementById("tab-"+x).classList.toggle("active", x===t);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("nav.tabs button"),function(b){
+      b.classList.toggle("active", b.getAttribute("data-tab")===t);
+    });
+  }
+
+  // wire up
+  Array.prototype.forEach.call(document.querySelectorAll("nav.tabs button"),function(b){
+    b.addEventListener("click",function(){ setTab(b.getAttribute("data-tab")); });
+  });
+  document.getElementById("btn-cow").addEventListener("click",function(){ setType("cow"); });
+  document.getElementById("btn-buffalo").addEventListener("click",function(){ setType("buffalo"); });
+  document.getElementById("add-btn").addEventListener("click", addEntry);
+  document.getElementById("prev-month").addEventListener("click",function(){ view.m--; if(view.m<0){view.m=11;view.y--;} renderTrack(); });
+  document.getElementById("next-month").addEventListener("click",function(){ view.m++; if(view.m>11){view.m=0;view.y++;} renderTrack(); });
+  Array.prototype.forEach.call(document.querySelectorAll(".quick button"),function(b){
+    b.addEventListener("click",function(){
+      var cur=parseFloat(document.getElementById("qty").value)||0;
+      document.getElementById("qty").value=round(cur+parseFloat(b.getAttribute("data-q")));
+    });
+  });
+  document.getElementById("save-rate").addEventListener("click", saveRateChange);
+  document.getElementById("exp-csv").addEventListener("click",function(){ download("milk-transactions.csv", toCSV(), "text/csv"); });
+  document.getElementById("exp-json").addEventListener("click",function(){ download("milk-backup.json", toJSON(), "application/json"); });
+  document.getElementById("imp-btn").addEventListener("click",function(){ document.getElementById("imp-file").click(); });
+  document.getElementById("imp-file").addEventListener("change",function(ev){
+    var f=ev.target.files[0]; if(!f) return;
+    var rd=new FileReader();
+    rd.onload=function(){ try{ var n=importJSON(rd.result); alert("Imported. Total transactions: "+n); }catch(e){ alert("Could not read that file."); } };
+    rd.readAsText(f); ev.target.value="";
+  });
+  document.addEventListener("click",function(ev){
+    var btn=ev.target.closest(".del"); if(!btn) return;
+    var id=btn.getAttribute("data-id");
+    save(load().filter(function(e){ return e.id!==id; }));
+    renderAll();
+  });
+
+  // init
+  document.getElementById("date").value=todayISO();
+  document.getElementById("rate-date").value=todayISO();
+  setRateField();
+  renderAll();
+
+  window.__milk={ load:load, save:save, loadRates:loadRates, loadRH:loadRH, toCSV:toCSV, toJSON:toJSON, importJSON:importJSON, addRaw:function(e){ var l=load(); l.push(e); save(l); renderAll(); } };
+})();
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load",function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "Doodh Hisaab — Milk Tracker",
+  "short_name": "Doodh Hisaab",
+  "description": "Track daily cow & buffalo milk deliveries from your milkman.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3f4f6",
+  "theme_color": "#0f766e",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
