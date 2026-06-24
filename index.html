@@ -51,8 +51,9 @@
   input{width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;font-size:1rem;background:#fff;color:var(--ink)}
   input:focus{outline:none;border-color:var(--teal)}
   .hint{font-size:.68rem;color:var(--muted);margin:-6px 0 10px}
-  .quick{display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 12px}
-  .quick button{flex:1;min-width:54px;padding:8px;border:1px solid var(--line);border-radius:10px;background:#f9fafb;font-size:.85rem;cursor:pointer;color:var(--ink)}
+  .quick,.presets{display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 12px}
+  .quick button,.presets button{flex:1;min-width:54px;padding:8px;border:1px solid var(--line);border-radius:10px;background:#f9fafb;font-size:.85rem;cursor:pointer;color:var(--ink)}
+  .presets button.active{background:var(--teal);color:#fff;border-color:var(--teal)}
   .btn{width:100%;padding:14px;background:var(--teal);color:#fff;border:none;border-radius:12px;font-size:1.05rem;font-weight:700;cursor:pointer}
   .btn:active{background:var(--teal-d)}
   .btn.sm{padding:11px;font-size:.95rem}
@@ -76,6 +77,11 @@
   .histline{display:flex;justify-content:space-between;font-size:.85rem;padding:8px 0;border-top:1px solid var(--line)}
   .histline .d{color:var(--muted)}
   .twocol{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+  .rangelabel{font-size:.8rem;color:var(--teal);margin-top:8px;font-weight:600;text-align:center}
+  .breakdown .brk{display:flex;justify-content:space-between;padding:8px 0;font-size:.92rem;border-top:1px solid var(--line)}
+  .breakdown .brk:first-child{border-top:none}
+  .breakdown .brk.total{font-weight:700;color:var(--teal);font-size:1.05rem}
+  .breakdown .brk.sub{color:var(--muted);font-size:.76rem;border-top:none;padding-top:2px}
 </style>
 </head>
 <body>
@@ -136,24 +142,43 @@
 
   <!-- ============ LEDGER ============ -->
   <section class="tab" id="tab-ledger">
-    <div class="cards four">
-      <div class="card cow"><div class="k">🐄 Cow</div><div class="v" id="all-cow">0</div><div class="u">L total</div></div>
-      <div class="card buf"><div class="k">🐃 Buff</div><div class="v" id="all-buffalo">0</div><div class="u">L total</div></div>
-      <div class="card cost"><div class="k">Spent</div><div class="v" id="all-cost">₹0</div><div class="u">all time</div></div>
-      <div class="card cnt"><div class="k">Txns</div><div class="v" id="all-count">0</div><div class="u">entries</div></div>
+    <div class="panel">
+      <h2>Date range</h2>
+      <div class="row">
+        <div><label for="from-date">From</label><input id="from-date" type="date"></div>
+        <div><label for="to-date">To</label><input id="to-date" type="date"></div>
+      </div>
+      <div class="presets" id="range-presets">
+        <button data-preset="7">7 days</button>
+        <button data-preset="30">30 days</button>
+        <button data-preset="month">This month</button>
+        <button data-preset="all">All time</button>
+      </div>
+      <div class="rangelabel" id="range-label"></div>
+    </div>
+    <div class="cards">
+      <div class="card cow"><div class="k">🐄 Cow</div><div class="v" id="r-cow">0</div><div class="u">litres</div></div>
+      <div class="card buf"><div class="k">🐃 Buffalo</div><div class="v" id="r-buffalo">0</div><div class="u">litres</div></div>
+      <div class="card cost"><div class="k">💰 Payout</div><div class="v" id="r-cost">₹0</div><div class="u">this range</div></div>
+    </div>
+    <div class="panel breakdown">
+      <div class="brk"><span>🐄 Cow milk</span><span id="brk-cow">0 L · ₹0</span></div>
+      <div class="brk"><span>🐃 Buffalo milk</span><span id="brk-buffalo">0 L · ₹0</span></div>
+      <div class="brk total"><span>Total payout</span><span id="brk-total">₹0</span></div>
+      <div class="brk sub"><span id="brk-days">0 days</span><span id="brk-txns">0 deliveries</span></div>
     </div>
     <div class="panel">
       <h2>Backup &amp; sync</h2>
       <div class="twocol">
-        <button class="btn ghost sm" id="exp-csv">⬇ Export CSV</button>
+        <button class="btn ghost sm" id="exp-csv">⬇ Export CSV (range)</button>
         <button class="btn ghost sm" id="exp-json">⬇ Backup (JSON)</button>
       </div>
       <button class="btn ghost sm" id="imp-btn" style="width:100%">⬆ Import / Restore (JSON)</button>
       <input type="file" id="imp-file" accept="application/json,.json" hidden>
-      <div class="hint" style="margin-top:8px">CSV = your full record for accounts. JSON = a backup you can restore, or import on the other phone to merge.</div>
+      <div class="hint" style="margin-top:8px">CSV = the selected date range, for settling the milkman / accounts. JSON = full backup to restore or merge onto the other phone.</div>
     </div>
     <div class="panel">
-      <h2>All transactions <span id="all-hist-count" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)"></span></h2>
+      <h2>Deliveries in range <span id="r-hist-count" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)"></span></h2>
       <div id="ledger"></div>
     </div>
   </section>
@@ -191,6 +216,7 @@
   var KEY="milk_entries_v1", RATEKEY="milk_rates_v1", RHKEY="milk_rate_history_v1";
   var selectedType="cow", tab="track";
   var view = thisMonth();
+  var rangeFrom=null, rangeTo=null;
   var MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
 
   function thisMonth(){ var d=new Date(); return {y:d.getFullYear(), m:d.getMonth()}; }
@@ -198,6 +224,8 @@
   function todayISO(){ var d=new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
   function round(n){ return Math.round(n*100)/100; }
   function uid(){ return String(Date.now())+Math.floor(Math.random()*100000); }
+  function addDaysISO(iso, delta){ var p=iso.split("-"); var d=new Date(+p[0],+p[1]-1,+p[2]); d.setDate(d.getDate()+delta); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+  function daysBetween(a,b){ var pa=a.split("-"),pb=b.split("-"); return Math.round((new Date(+pb[0],+pb[1]-1,+pb[2])-new Date(+pa[0],+pa[1]-1,+pa[2]))/86400000)+1; }
 
   function load(){ try{ return JSON.parse(localStorage.getItem(KEY))||[]; }catch(e){ return []; } }
   function save(v){ localStorage.setItem(KEY, JSON.stringify(v)); }
@@ -207,6 +235,7 @@
   function saveRH(v){ localStorage.setItem(RHKEY, JSON.stringify(v)); }
 
   function currentRate(type){ var r=loadRates(); return (r[type]!=null && r[type]!=="")? r[type] : ""; }
+  function firstEntryDate(){ var l=load(); if(!l.length) return todayISO(); return l.map(function(e){return e.date;}).sort()[0]; }
   function inView(ds){ var p=ds.split("-"); return (+p[0])===view.y && (+p[1]-1)===view.m; }
   function fmtDate(ds){ var p=ds.split("-"); var d=new Date(+p[0],+p[1]-1,+p[2]);
     var dow=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getDay()];
@@ -248,17 +277,39 @@
     groupByDate(me, document.getElementById("history"), "No deliveries this month yet.<br>Add your first one above. 🥛");
   }
 
+  function setRange(from,to){ document.getElementById("from-date").value=from; document.getElementById("to-date").value=to; renderLedger(); }
+  function applyPreset(p){
+    var t=todayISO();
+    if(p==="7") setRange(addDaysISO(t,-6), t);
+    else if(p==="30") setRange(addDaysISO(t,-29), t);
+    else if(p==="month"){ var d=new Date(); setRange(d.getFullYear()+"-"+pad(d.getMonth()+1)+"-01", t); }
+    else if(p==="all") setRange(firstEntryDate(), t);
+    Array.prototype.forEach.call(document.querySelectorAll("#range-presets button"),function(b){
+      b.classList.toggle("active", b.getAttribute("data-preset")===p);
+    });
+  }
+
   function renderLedger(){
-    var list=load().slice().sort(function(a,b){ return a.date<b.date?1:(a.date>b.date?-1:0); });
-    var cow=0,buf=0,cost=0;
-    list.forEach(function(e){ if(e.type==="cow")cow+=e.qty; else buf+=e.qty; cost+=(e.qty||0)*(e.rate||0); });
-    document.getElementById("all-cow").textContent=round(cow);
-    document.getElementById("all-buffalo").textContent=round(buf);
-    document.getElementById("all-cost").textContent="₹"+Math.round(cost);
-    document.getElementById("all-count").textContent=list.length;
-    document.getElementById("all-hist-count").textContent=list.length?"("+list.length+")":"";
+    var from=document.getElementById("from-date").value, to=document.getElementById("to-date").value;
+    if(from && to && from>to){ var tmp=from; from=to; to=tmp; document.getElementById("from-date").value=from; document.getElementById("to-date").value=to; }
+    rangeFrom=from; rangeTo=to;
+    var list=load().filter(function(e){ return (!from||e.date>=from)&&(!to||e.date<=to); })
+                   .sort(function(a,b){ return a.date<b.date?1:(a.date>b.date?-1:0); });
+    var cow=0,buf=0,cowC=0,bufC=0;
+    list.forEach(function(e){ var amt=(e.qty||0)*(e.rate||0); if(e.type==="cow"){cow+=e.qty;cowC+=amt;}else{buf+=e.qty;bufC+=amt;} });
+    var total=cowC+bufC;
+    document.getElementById("r-cow").textContent=round(cow);
+    document.getElementById("r-buffalo").textContent=round(buf);
+    document.getElementById("r-cost").textContent="₹"+Math.round(total);
+    document.getElementById("brk-cow").textContent=round(cow)+" L · ₹"+Math.round(cowC);
+    document.getElementById("brk-buffalo").textContent=round(buf)+" L · ₹"+Math.round(bufC);
+    document.getElementById("brk-total").textContent="₹"+Math.round(total);
+    document.getElementById("brk-days").textContent=(from&&to?daysBetween(from,to):0)+" days";
+    document.getElementById("brk-txns").textContent=list.length+" deliveries";
+    document.getElementById("range-label").textContent=(from&&to)?(fmtFull(from)+"  →  "+fmtFull(to)):"Pick a date range above";
+    document.getElementById("r-hist-count").textContent=list.length?"("+list.length+")":"";
     var host=document.getElementById("ledger"); host.innerHTML="";
-    if(!list.length){ host.innerHTML='<div class="empty">No transactions yet.</div>'; return; }
+    if(!list.length){ host.innerHTML='<div class="empty">No deliveries in this range.</div>'; return; }
     var byMonth={}; list.forEach(function(e){ (byMonth[monthKey(e.date)]=byMonth[monthKey(e.date)]||[]).push(e); });
     Object.keys(byMonth).sort().reverse().forEach(function(mk){
       var ms=byMonth[mk], mc=0; ms.forEach(function(e){ mc+=(e.qty||0)*(e.rate||0); });
@@ -322,8 +373,8 @@
     renderAll(); setRateField();
   }
 
-  function toCSV(){
-    var list=load().slice().sort(function(a,b){ return a.date<b.date?-1:1; });
+  function toCSV(from,to){
+    var list=load().filter(function(e){ return (!from||e.date>=from)&&(!to||e.date<=to); }).sort(function(a,b){ return a.date<b.date?-1:1; });
     var rows=[["date","type","quantity_l","rate_per_l","amount_inr"]];
     list.forEach(function(e){ rows.push([e.date,e.type,e.qty,e.rate,Math.round((e.qty||0)*(e.rate||0))]); });
     return rows.map(function(r){ return r.join(","); }).join("\n");
@@ -369,14 +420,20 @@
   document.getElementById("add-btn").addEventListener("click", addEntry);
   document.getElementById("prev-month").addEventListener("click",function(){ view.m--; if(view.m<0){view.m=11;view.y--;} renderTrack(); });
   document.getElementById("next-month").addEventListener("click",function(){ view.m++; if(view.m>11){view.m=0;view.y++;} renderTrack(); });
-  Array.prototype.forEach.call(document.querySelectorAll(".quick button"),function(b){
+  Array.prototype.forEach.call(document.querySelectorAll("#tab-track .quick button"),function(b){
     b.addEventListener("click",function(){
       var cur=parseFloat(document.getElementById("qty").value)||0;
       document.getElementById("qty").value=round(cur+parseFloat(b.getAttribute("data-q")));
     });
   });
+  Array.prototype.forEach.call(document.querySelectorAll("#range-presets button"),function(b){
+    b.addEventListener("click",function(){ applyPreset(b.getAttribute("data-preset")); });
+  });
+  document.getElementById("from-date").addEventListener("change",function(){ clearPresetActive(); renderLedger(); });
+  document.getElementById("to-date").addEventListener("change",function(){ clearPresetActive(); renderLedger(); });
+  function clearPresetActive(){ Array.prototype.forEach.call(document.querySelectorAll("#range-presets button"),function(b){ b.classList.remove("active"); }); }
   document.getElementById("save-rate").addEventListener("click", saveRateChange);
-  document.getElementById("exp-csv").addEventListener("click",function(){ download("milk-transactions.csv", toCSV(), "text/csv"); });
+  document.getElementById("exp-csv").addEventListener("click",function(){ download("milk-"+(rangeFrom||"all")+"_to_"+(rangeTo||"now")+".csv", toCSV(rangeFrom,rangeTo), "text/csv"); });
   document.getElementById("exp-json").addEventListener("click",function(){ download("milk-backup.json", toJSON(), "application/json"); });
   document.getElementById("imp-btn").addEventListener("click",function(){ document.getElementById("imp-file").click(); });
   document.getElementById("imp-file").addEventListener("change",function(ev){
@@ -396,9 +453,10 @@
   document.getElementById("date").value=todayISO();
   document.getElementById("rate-date").value=todayISO();
   setRateField();
+  applyPreset("month");
   renderAll();
 
-  window.__milk={ load:load, save:save, loadRates:loadRates, loadRH:loadRH, toCSV:toCSV, toJSON:toJSON, importJSON:importJSON, addRaw:function(e){ var l=load(); l.push(e); save(l); renderAll(); } };
+  window.__milk={ load:load, save:save, loadRates:loadRates, loadRH:loadRH, toCSV:toCSV, toJSON:toJSON, importJSON:importJSON, applyPreset:applyPreset, setRange:setRange, addRaw:function(e){ var l=load(); l.push(e); save(l); renderAll(); }, reset:function(){ localStorage.removeItem(KEY); localStorage.removeItem(RHKEY); saveRates({cow:"",buffalo:""}); renderAll(); } };
 })();
 
 if("serviceWorker" in navigator){

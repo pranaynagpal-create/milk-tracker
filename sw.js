@@ -1,4 +1,4 @@
-var CACHE = "milk-tracker-v2";
+var CACHE = "milk-tracker-v3";
 var ASSETS = ["./index.html", "./manifest.webmanifest", "./icon.svg"];
 
 self.addEventListener("install", function(e){
